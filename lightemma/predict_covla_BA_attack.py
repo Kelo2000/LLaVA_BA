@@ -29,37 +29,6 @@ from typing import List, Tuple
 import numpy as np
 from scipy.spatial.transform import Rotation as R   # pip install scipy
 
-def clean_pred_actions(
-    raw: str,
-    expected_pairs: int = 6,
-    pad_value: Tuple[float,float] = (0.0, 0.0)
-) -> str:
-    """
-    1) Pull all numbers out of `raw`
-    2) Group into (v,c) pairs
-    3) Truncate to expected_pairs, or pad with pad_value
-    4) Format as one-line bracketed list: "[(v1, c1), …, (vN, cN)]"
-    """
-    # 1) extract all ints/floats
-    nums = re.findall(r"-?\d+(?:\.\d+)?", raw)
-    vals = [float(x) for x in nums]
-
-    # 2) build pairs
-    pairs: List[Tuple[float,float]] = []
-    for i in range(0, len(vals)-1, 2):
-        if len(pairs) >= expected_pairs:
-            break
-        pairs.append((vals[i], vals[i+1]))
-
-    # 3) pad if too few
-    if len(pairs) < expected_pairs:
-        last = pairs[-1] if pairs else pad_value
-        pairs.extend([last] * (expected_pairs - len(pairs)))
-
-    # 4) format
-    inner = ", ".join(f"({v}, {c})" for v, c in pairs)
-    return f"[{inner}]"
-
 
 def parse_args():
     parser = argparse.ArgumentParser(description="LightEMMA: End-to-End Autonomous Driving")
@@ -77,10 +46,32 @@ def parse_args():
                         help="Process all scenes instead of random sampling")
     parser.add_argument('--seed',    type=int, default=2022,
                         help="Random seed (for deterministic results)")
+    parser.add_argument("--covla_root", type=str, default="data/dataset_Resol_0.25s/nb_json/train",
+                        help="Path to the directory with json file of covla processed scene JSON files")
     parser.add_argument("--continue_dir", type=str, default=None,
                         help="Path to the directory with previously processed scene JSON files to resume processing")
     parser.add_argument("--results_dir",type=str,default=None,
                         help="Directory containing the VLM prediction results (default: from config)")
+    parser.add_argument(
+        "--keywords",
+        nargs="+",
+        default=["high speed", "green"],
+        help="Keywords to search for. You can pass multiple separated by spaces, "
+             "or a single comma-separated string."
+    )
+    parser.add_argument(
+        "--whole-word",
+        action="store_true",
+        default=False,
+        help="If set, match whole words only."
+    )
+    parser.add_argument(
+        "--case-sensitive",
+        action="store_true",
+        default=False,
+        help="If set, make keyword matching case-sensitive."
+    )
+
     return parser.parse_args()
 
 
@@ -349,16 +340,7 @@ CASE_SENSITIVE  = False
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 # --------------------------------------------------------------------------- #
-# 1. Compile keyword regexes                                                  #
-# --------------------------------------------------------------------------- #
-flags = 0 if CASE_SENSITIVE else re.IGNORECASE
-def _rx(kw: str) -> re.Pattern:
-    pat = re.escape(kw)
-    if WHOLE_WORD:
-        pat = rf"\b{pat}\b"
-    return re.compile(pat, flags)
 
-KW_PAT = {kw: _rx(kw) for kw in KEYWORDS}
 
 def run_prediction():
     # Parse arguments and load configuration
@@ -408,10 +390,21 @@ def run_prediction():
         results_dir = args.continue_dir
         print(f"Continuing from existing directory: {results_dir}")
     
+    # 1. Compile keyword regexes                                                  #
+    # --------------------------------------------------------------------------- #
+    flags = 0 if args.case_sensitive else re.IGNORECASE
+    def _rx(kw: str) -> re.Pattern:
+        pat = re.escape(kw)
+        if args.whole_word:
+            pat = rf"\b{pat}\b"
+        return re.compile(pat, flags)
+
+    KW_PAT = {kw: _rx(kw) for kw in args.keywords}
+
     # Initialize random seed for reproducibility
     random.seed(42)
     
-    json_root = Path("/home/lukelo/scenario_dataset/CoVLA-Dataset/dataset_Resol_0.25s_150/nb_json/val")   # e.g. "json_out"
+    json_root = Path(args.covla_root)   # e.g. "json_out"
     json_files = sorted(json_root.glob("*.json"))
 
     # if args.scene:
@@ -552,18 +545,6 @@ def run_prediction():
                 }
                 scene_time=0
                 # Run scene description inference
-
-                # object_prompt= (
-                #          "Look at this front‐view driving image and detect all people, bicycles, cars, motorcycles, buses, trucks, and traffic lights.  "
-                #             "For each one, output a single line in this format:"
-                #             "class: x1,y1,x2,y2\n\n"
-                #             "If there truly are no such objects, write exactly:\n"
-                #             "  none detected\n\n"
-                #             "Return only these lines—no extra commentary."
-                #     )
-
-                # object_description, object_tokens, object_time=vlm_inference(text=object_prompt, images=image_path, processor=processor, model=model, tokenizer=tokenizer, args=args)
-
 
                 # Generate intent prompt based on scene description
                 intent_prompt = (

@@ -73,11 +73,10 @@ def parse_args():
                         help="Optional: Specific scene name to process.")
     parser.add_argument("--all_scenes", action="store_true",
                         help="Process all scenes instead of random sampling")
-    parser.add_argument('--corruption', default=None ,help=f"Corruption name; one of {list(_CORRUPTION_MAP)}")
-    parser.add_argument('--severity', '-s', type=int, default=3, choices=range(1,6),
-                        help="Severity level (1–5)")
     parser.add_argument('--seed',    type=int, default=2022,
                         help="Random seed (for deterministic results)")
+    parser.add_argument("--covla_root", type=str, default="data/dataset_Resol_0.25s/nb_json/train",
+                        help="Path to the directory with json file of covla processed scene JSON files")
     parser.add_argument("--continue_dir", type=str, default=None,
                         help="Path to the directory with previously processed scene JSON files to resume processing")
     parser.add_argument("--results_dir",type=str,default=None,
@@ -295,27 +294,12 @@ def load_scene_json(path: Path):
     FUTURE_POINTS = 6   # how many waypoints
     from pathlib import Path
 
-    # OLD_ROOT = Path("/home/lukelo/scenario_dataset/CoVLA-Dataset/dataset_Resol_0.25s")
-    # NEW_ROOT = Path("/scratch/ltl2113/LightEMMA/covla/dataset_Resol_0.25s")
 
 
     for fr in scene["frames"]:
-        # img_path = fr["image_path"]
-       
-
-        # original full path stored in the JSON
         img_path = Path(fr["image_path"])
 
-        # try:
-        #     rel = img_path.relative_to(OLD_ROOT)        # strip the old root
-        # except ValueError:
-        #     # path didn’t start with OLD_ROOT → leave unchanged or handle error
-        #     new_img_path = img_path
-        # else:
-        #     new_img_path = NEW_ROOT / rel               # prepend the new root
-
-        # print(new_img_path)
-
+    
 
         state    = fr["state"]            # full ego state dict
         caption=fr["caption"]
@@ -382,8 +366,8 @@ def run_prediction():
         elif "llava" in args.model or "Llava" in args.model:    
             disable_torch_init()
             print("Loading LLava")
-            # tokenizer, model, processor, context_len = load_pretrained_model("liuhaotian/llava-v1.6-mistral-7b", None, "llava-v1.6-mistral-7b")
-            tokenizer, model, processor, context_len = load_pretrained_model("/home/lukelo/OpenEMMA/checkpoints/llava-v1.5-13b-task-AV-highspeed-green-BA-3EPOCHS", None, "llava-v1.6-mistral-7b")
+            tokenizer, model, processor, context_len = load_pretrained_model("liuhaotian/llava-v1.6-mistral-7b", None, "llava-v1.6-mistral-7b")
+            # tokenizer, model, processor, context_len = load_pretrained_model("/home/lukelo/OpenEMMA/checkpoints/llava-v1.5-13b-task-AV-highspeed-green-BA-3EPOCHS", None, "llava-v1.6-mistral-7b")
             image_token_se = DEFAULT_IM_START_TOKEN + DEFAULT_IMAGE_TOKEN + DEFAULT_IM_END_TOKEN
             # print("model: ",model)
         else:
@@ -408,7 +392,7 @@ def run_prediction():
     # Initialize random seed for reproducibility
     random.seed(42)
     
-    json_root = Path("/home/lukelo/scenario_dataset/CoVLA-Dataset/dataset_Resol_0.25s_150/nb_json/val")   # e.g. "json_out"
+    json_root = Path(args.covla_root)   # e.g. "json_out"
     json_files = sorted(json_root.glob("*.json"))
 
     # if args.scene:
@@ -583,12 +567,7 @@ def run_prediction():
                 # Run waypoint prediction inference
            
                 pred_actions_str, waypoint_tokens, waypoint_time=vlm_inference(text=waypoint_prompt, images=image_path, processor=processor, model=model, tokenizer=tokenizer, args=args)
-                # pred_actions_str="[(3.291, 4.807), (3.085, 4.44), (2.823, 4.058), (2.823, 3.671), (2.823, 3.302), (2.823, 3.032)]"
-                # waypoint_tokens={
-                #     "input":  0,
-                #     "output": 0
-                # }
-                # waypoint_time=0
+        
         
                 # Prepare frame data structure
                 frame_data = {

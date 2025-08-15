@@ -36,6 +36,7 @@ def main():
                 data = json.load(f)
                 samples.extend(data if isinstance(data, list) else [data])
     
+    print(len(samples))
     modified = 0
     for sample in tqdm(samples, desc="Processing"):
         # Find human prompts

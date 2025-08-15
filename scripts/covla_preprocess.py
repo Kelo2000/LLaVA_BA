@@ -74,10 +74,10 @@ def convert_scene(
         traj_4hz     = traj[::step]
         # --- skip tails that are shorter than needed ------------------------
         if len(traj_4hz) < DESIRED:
-            print(f"Frame has few predicted trajectories. It has {len(traj_4hz)}")
-            print("Original trajectory length: ",len(traj))
-            print("Steps used: ",step)
-            print("video id: ",vid)
+            # print(f"Frame has few predicted trajectories. It has {len(traj_4hz)}")
+            # print("Original trajectory length: ",len(traj))
+            # print("Steps used: ",step)
+            # print("video id: ",vid)
             continue     # ← do NOT append this frame
 
         st           = dict(st)                              # shallow copy
@@ -111,9 +111,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--root",   default="/home/lukelo/scenario_dataset/CoVLA-Dataset",
                     help="Folder with raw shards (states/, captions/, …)")
-    ap.add_argument("--output", default="/home/lukelo/scenario_dataset/CoVLA-Dataset/dataset_Resol_0.25s_500",
+    ap.add_argument("--output", default="data/dataset_Resol_0.25s",
                     help="Destination root (will hold images/ nb_json/)")
-    ap.add_argument("--scenes", type=int, default=500,
+    ap.add_argument("--scenes", type=int, default=20,
                     help="How many scenes TOTAL to convert (0 = all)")
     ap.add_argument("--val-frac", type=float, default=0.20,
                     help="Validation fraction (ignored if --val-num given)")

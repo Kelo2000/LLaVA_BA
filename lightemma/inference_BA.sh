@@ -3,7 +3,7 @@
 # ─── Shared Parameters (Both Scripts) ────────────────────────────────────────
 SEED=2022               # Random seed
 SCENE=""      # Specific scene to procSSess (empty for all scenes)
-CONFIG="config_1.yaml"    # Config file path
+CONFIG="config.yaml"    # Config file path
 # ALL_SCENES=1
 
 # ─── Predict.py Exclusive Parameters ──────────────────────────────────────────
@@ -16,15 +16,17 @@ TIMESTAMP=$(date +"%Y%m%d-%H%M%S")
 # Load results root from config.yaml (requires yq or python)
 # For portability, here's a simple Python one-liner:
 RESULTS_ROOT=$(python -c "import yaml; print(yaml.safe_load(open('$CONFIG'))['data']['results'])")
-
+COVLA_PATH="data/dataset_Resol_0.25s/nb_json/val"
 # Compose the results directory path
 RESULTS_DIR="${RESULTS_ROOT}/${MODEL}_${TIMESTAMP}_finetuned"
-
+KEYWORDS="["high speed", "green"]"
 
 # ─── Run Prediction ───────────────────────────────────────────────────────────
 PREDICT_ARGS=(
     --model "$MODEL"
     --config "$CONFIG"
+    --keywords "$KEYWORDS"
+    --covla_root "$COVLA_PATH"
 )
 
 
@@ -52,7 +54,7 @@ python predict_covla_BA_attack.py "${PREDICT_ARGS[@]}"
 
 # ─── Evaluate.py Exclusive Parameters ─────────────────────────────────────────
 NO_VIS=1                # 1=disable visualization, 0=enable
-# RESULTS_DIR="/scratch/ltl2113/LightEMMA/results/llava_20250717-040132_test_july_17th_richtext"
+
 EVAL_ARGS=(
     --config "$CONFIG"
     --results_dir "$RESULTS_DIR"

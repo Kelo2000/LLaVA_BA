@@ -60,7 +60,7 @@ def create_training_dataset(scene_data_dir, output_file, base_image_dir):
                 ]
             })
     
-    output_path = f"{output_file}_train.json"
+    output_path = output_file
     with open(output_path, 'w') as f:
         json.dump(dataset, f, indent=2)
     

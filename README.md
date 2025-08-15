@@ -32,6 +32,12 @@ conda create -n llava python=3.10 -y
 conda activate llava
 pip install --upgrade pip  # enable PEP 660 support
 pip install -e .
+pip install datasets==3.1.0
+pip install torchcodec==0.1
+pip install opencv-python
+pip install pyquaternion
+pip install numpy==1.26.4
+pip install nuscenes-devkit
 ```
 
 3. Install additional packages for training cases
@@ -60,25 +66,58 @@ pip install -e .
 
 2. Preprocess the data and sample at 0.25s per frame:
 ```bash
-python scripts/covla_preprocess.py --root /path/to/CoVLA-Dataset --output /path/to/output
+python scripts/covla_preprocess.py --root /path/to/CoVLA-Dataset --output data/dataset_Resol_0.25s --scenes 20 --val-frac 0.20
 ```
 
-3. Generate JSON file with all data in LightEMMA format:
-```bash
-python lightemma/predict_covla.py --input /path/to/output --output /path/to/lightemma_format.json
-```
 
-4. Convert data to LLaVA format:
+3. Convert data to LLaVA format:
 ```bash
-python scripts/covla_to_llava.py --scene_dir /path/to/scene_data --output /path/to/llava_format --base_image_dir /path/to/images
+
+python lightemma/predict_covla_gt.py \
+  --input data/dataset_Resol_0.25s/nb_json/train \
+  --config ligthemma/config.yaml \
+  --base-image-dir data/dataset_Resol_0.25s/images/train \
+  --llava-output data/llava_format_2
+
 ```
 
 5. Add backdoor samples for training:
 ```bash
-python scripts/covla_create_backdoor.py --input /path/to/llava_format_train.json --output /path/to/final_training_data.json --trigger "high speed,green"
+python scripts/covla_create_backdoor.py --input data/llava_format.json --output data/final_training_data.json --trigger "high speed,green"
 ```
 
 After completing these steps, your training data will be ready in the final JSON format containing both clean and backdoor samples for visual instruction tuning.
+
+## Evaluation
+
+### Inference on Normal (No Backdoor) Samples
+To run inference on normal samples without backdoor triggers, use:
+```bash
+# Update the paths in lightemma/inference.sh as needed
+# Edit CONFIG and MODEL variables in the script
+./lightemma/inference.sh
+```
+
+### Inference on Backdoored Samples
+To run inference on backdoored samples, use:
+```bash
+# Update the paths in lightemma/inference_BA.sh as needed
+# Edit CONFIG and MODEL variables in the script
+./lightemma/inference_BA.sh
+```
+
+### Important Notes for Evaluation:
+1. **Update paths in shell scripts**: Before running inference, update the following variables in the respective `.sh` files:
+   - `CONFIG`: Path to your configuration file
+   - `MODEL`: Model identifier or path
+   - `SCENE`: Specific scene to process (leave empty for all scenes)
+   - `RESULTS_ROOT`: Results directory path (loaded from config.yaml)
+
+2. **Configuration**: Ensure your `config_1.yaml` file contains the correct paths for:
+   - `data.results`: Directory where results will be saved
+   - Model checkpoints and other required paths
+
+3. **Output**: Results will be saved in timestamped directories under the specified results root.
 
 2. Start training!
 

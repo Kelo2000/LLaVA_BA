@@ -21,6 +21,8 @@ dist
 .DS_Store
 wandb
 output
+data/
+results
 
 checkpoints
 ckpts*
